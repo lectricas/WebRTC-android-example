@@ -1,92 +1,91 @@
 # Android WebRTC Demo
 
-안드로이드 앱에서 WebRTC를 사용하면서 알게된 지식을 정리해봤습니다. 이후 이 내용을 바탕으로 데모 앱을 만들어 간단히 두 안드로이드 스마트폰이 화상으로 통신하는 서비스를 개발하였습니다
+I summarized the knowledge I learned while using WebRTC in Android apps. Afterwards, based on this content, a demo app was created to develop a simple video communication service between two Android smartphones.
 
-ℹ️릴리즈 노트 및 이슈 트래킹은 [WebRTC](http://webrtc.github.io/webrtc-org/) 웹 페이지를 참조하세요.
+ℹ️See the [WebRTC](http://webrtc.github.io/webrtc-org/) webpage for release notes and issue tracking.
 
 ## 0. Demo Video.
 [![Video Label](http://img.youtube.com/vi/VQBzslcEH4o/0.jpg)](https://youtu.be/VQBzslcEH4o?t=0s)
 
 ## 1. Summary
-1. 상대방과 offer / answer 를 주고받고, Ice Candidates를 주고받은 후 둘이서 P2P direct 통신을 합니다.
-2. (1) 번 과정은 [소켓 통신을 통해서 이루어집니다.
-3. WebRTC를 사용하는 중 발생하는 소켓 통신을 도식화한 간단한 이미지를 첨부합니다.
+1. After exchanging offers / answers with the other party and exchanging Ice Candidates, the two of them conduct P2P direct communication.
+2. Process (1) is done through [socket communication.
+3. A simple image showing the socket communication that occurs while using WebRTC is attached.
 ![webrtc-socket-img](https://github.com/skfo763/WebRTC-android-example/blob/master/.github/art/webrtc-socket-img.png)
-
 ## 2. Architecture
 
 ### Overview
-1. 이 데모 앱은 [WebRTC 가이드라인](http://webrtc.github.io/webrtc-org/native-code/android/) 에서 제공하는 사전 빌드된 라이브러리를 사용합니다.
-2. RTC 모듈 내부에서도, PeerConnection을 담당하는 Manager, Socket 통신을 담당하는 Manager 등을 나누었습니다.
-3. FaceChatRtcManager를 통해서 화상 채팅을 직접 구현할 수 있습니다.
-4. 시그널링 서버, turn / coturn 과 같은 서버 스펙은 이 repository에는 없습니다. 관련 다른 레포를 찾아보세요.
+1. This demo app uses the pre-built library provided by [WebRTC Guidelines](http://webrtc.github.io/webrtc-org/native-code/android/).
+2. Inside the RTC module, the Manager in charge of PeerConnection and the Manager in charge of Socket communication were divided.
+3. You can implement video chat directly through FaceChatRtcManager.
+4. Server specifications such as signaling server, turn / coturn are not in this repository. Browse other related repo.
 
 ### Structure
 ![image](./.github/art/videochat_structure_brand_new.png)
-1. View -> RtcManager 통신
-    - 데모 앱은 ViewModel이 RtcManager를 관리하는 형태로 작성하였습니다.
-    - SurfaceView를 RtcManager에 등록시켜주면, RtcManager는 그 view를 초기화시키고, 카메라를 캡쳐하여 렌더링해줍니다.
-    - 뷰는 자신의 생명주기에 맞게 RtcManager에 있는 메소드를 호출합니다 (*initialize, attach, destroy 등등..*)
-    - RtcManager를 생성할 때, IVideoChatViewModelListener 인터페이스의 생성자를 넣어줘야 합니다.
+1. View -> RtcManager communication
+   - The demo app was created in a way that ViewModel manages RtcManager.
+   - If SurfaceView is registered with RtcManager, RtcManager initializes the view, captures the camera, and renders it.
+   - Views call methods in RtcManager according to their lifecycle (*initialize, attach, destroy, etc..*)
+   - When creating RtcManager, you must put the constructor of IVideoChatViewModelListener interface.
 
-2. RtcManager -> View 통신
-    - IVideoChatViewModelListener 인터페이스를 통해 RTC 이벤트를 뷰에 전달합니다.
-    - 따라서 뷰 혹은 뷰모델 레이어의 클래스는 IVideoChatViewModelListener를 구현해야 합니다.
+2. RtcManager -> View communication
+   - Deliver RTC events to the view through the IVideoChatViewModelListener interface.
+   - Therefore, the class of the view or view model layer must implement IVideoChatViewModelListener.
 
-3. RtcManager <-> PeerManager 간 통신
-    - 명시적으로 해줘야 하는 작업 없이, WebRTC 라이브러리에서 제공하는 메소드를 그대로 호출합니다.
+3. Communication between RtcManager <-> PeerManager
+   - Call the method provided by the WebRTC library as it is, without any explicit work.
 
-4. RtcManager <-> SocketConnect 간 통신
-    - 만약 여러분의 서비스가 시그널링 서버를 통한 커스텀 소켓 이벤트를 구현하고 싶다면, SocketEventListener 혹은 별도의 인터페이스를 만들어 통신하세요.
-    - 데모 앱은 두 사용자를 매칭시켜주는 이벤트에서 데이터를 주고받기 위해 커스텀 이벤트를 구현했습니다.
+4. Communication between RtcManager <-> SocketConnect
+   - If your service wants to implement custom socket events through a signaling server, create a SocketEventListener or a separate interface to communicate.
+   - The demo app implemented a custom event to send and receive data in an event that matches two users.
 
-#### 구 버전 (2020.07.10 릴리즈)
+#### old version (2020.07.10 release)
 <details>
 <summary>
-펼쳐보기
+unfold
 </summary>
 <p>
 ![image](./.github/art/android-summary-architecture.png)
-1. View <-> RTC 모듈 간 통신
-	- 안드로이드 app 모듈에 xml로 선언된 SurfaceViewRenderer를 RTC 모듈에 넘겨줍니다.
-	- 이렇게 넘어간 SurfaceViewRenderer는 RTC의 VideoStream, AudioStream을 구성합니다.
-	- app 모듈에서는 [RtcModuleInterface](https://github.com/skfo763/WebRTC-android-example/blob/master/rtc/src/main/java/com/skfo763/rtc/contracts/RtcModuleInterface.kt)를 통해서 RTC 모듈을 제어합니다.
-	- rtc 모듈에서는 자신의 작업이 완료되었다는 것을 [RtcViewInterface](https://github.com/skfo763/WebRTC-android-example/blob/master/rtc/src/main/java/com/skfo763/rtc/contracts/RtcViewInterface.kt)를 통해 app에 전달합니다.
-2. RTC <-> Socket 간 통신
-    - 사전 정의된 offer / answer / icecandidate의 경우 별도의 소켓 통신 처리를 해주지 않아도 rtc 라이브러리가 알아서 데이터를 교환합니다.
-    - 각 서비스마다 독자적으로 화상 통화 중 특정 이벤트를 발행 및 수신하게 만들고 싶다면, RTC와 socket 사이의 인터페이스를 통해서 주고받습니다.
+1. View <-> Communication between RTC modules
+- Pass the SurfaceViewRenderer declared in xml in the Android app module to the RTC module.
+- The SurfaceViewRenderer passed in this way configures the RTC's VideoStream and AudioStream.
+- In the app module, through [RtcModuleInterface](https://github.com/skfo763/WebRTC-android-example/blob/master/rtc/src/main/java/com/skfo763/rtc/contracts/RtcModuleInterface.kt) Controls the RTC module.
+- In the rtc module, [RtcViewInterface](https://github.com/skfo763/WebRTC-android-example/blob/master/rtc/src/main/java/com/skfo763/rtc/contracts /RtcViewInterface.kt) to the app.
+2. RTC <-> Communication between Sockets
+    - In the case of predefined offer / answer / icecandidate, the rtc library exchanges data on its own without requiring separate socket communication processing.
+    - If you want each service to independently issue and receive a specific event during a video call, send and receive through the interface between RTC and socket.
 </details>
 
 
 ### Details
 #### Property
-1. localVideoSource : 로컬 카메라가 촬영하는 비디오 트랙의 생성 등을 관리
+1. localVideoSource: Manages the creation of video tracks taken by local cameras
 ~~~
 private val localVideoSource by lazy {
-	peerConnectionFactory.createVideoSource(false)
+peerConnectionFactory.createVideoSource(false)
 }
 ~~~
-2.  localVideoTrack : 로컬 카메라가 촬영하는 비디오 스트림을 갖고 있음
+2. localVideoTrack : Contains the video stream taken by the local camera
 ~~~
 private val localVideoTrack by lazy {
-	peerConnectionFactory.createVideoTrack(VIDEO_TRACK_ID, localVideoSource)
+peerConnectionFactory.createVideoTrack(VIDEO_TRACK_ID, localVideoSource)
 }
 ~~~
-3. surfaceTextureHelper : 로컬 카메라가 촬영하는 영상의 텍스쳐 (질감, 색감 등등) 을 담당
+3. surfaceTextureHelper: Responsible for the texture (texture, color, etc.) of the image captured by the local camera
 ~~~
 surfaceTextureHelper = SurfaceTextureHelper.create(Thread.currentThread().name, rootEglBase.eglBaseContext)
 ~~~
-4. localStream : 내 오디오/비디오 트랙을 상대방에게 보낼 때 이 localStream에 담아서 보내준다.
+4. localStream: When I send my audio/video tracks to the other party, I put them in this localStream and send them.
 ~~~
 val localStream: MediaStream by lazy {
-	peerConnectionFactory.createLocalMediaStream(LOCAL_STREAM_ID)
+peerConnectionFactory.createLocalMediaStream(LOCAL_STREAM_ID)
 }
 ~~~
-5. videoCaptureManager : Camera2 / Camera1, front / back facing 관련 처리 담당해줌
+5. videoCaptureManager: Handles Camera2 / Camera1, front / back facing related processing
 ~~~
 private val videoCaptureManager = VideoCaptureManager.getVideoCapture(context)
 ~~~
-6. peerConnection : 상대방과 주고받는 데이터
+6. peerConnection: Data exchanged with the other party
 ~~~
 protected fun buildPeerConnection(): PeerConnection? {
   val rtcConfig = PeerConnection.RTCConfiguration(iceServer).apply {
@@ -107,62 +106,44 @@ protected fun buildPeerConnection(): PeerConnection? {
   }
 }
 ~~~
+#### PeerConnection connection order
+**--- create activity ---**
+1. Initialize localStream, localVideoTrack, videoCaptureManager
+2. Add localVideoTrack to localStream
+3. Initialize surfaceTextureHelper, localVideoSource
+4. Calling videoCaptureManager.initialize() method -> Ready to shoot local camera
+5. Start shooting local camera
 
-#### PeerConnection 연결 순서
-**--- 액티비티 생성 ---**
-1. localStream, localVideoTrack, videoCaptureManager 초기화
-2. localStream에 localVideoTrack을 추가
-3. surfaceTextureHelper, localVideoSource 초기화
-4. videoCaptureManager.initialize() 메소드 호출 -> 로컬 카메라 촬영 준비 완료
-5. 로컬 카메라 촬영 시작
+**--- Intro ---**
 
-**--- 인트로 ---**
+6. Add localVideoTrack to sv_face_chat_intro_preview -> From this point on, my image is displayed on the intro surface view.
 
-6. sv_face_chat_intro_preview에 localVideoTrack 추가 -> 이 때부터 인트로 서페이스뷰에 에 내 모습이 띄워짐.
+**--- waiting for matching ---**
 
-**--- 매칭 대기 ---**
+7. Add localVideoTrack to sv_face_chat_waiting_local -> From this point on, my image is displayed on the surface view of the waiting screen.
+8. Initialize the iceServer address value
+9. Initialize peerConnection
+10. Connect localStream to peerConnection
 
-7. sv_face_chat_waiting_local에 localVideoTrack 추가 -> 이 때부터 대기화면 서페이스뷰에 에 내 모습이 띄워짐.
-8. iceServer 주소 값 초기화
-9. peerConnection 초기화
-10. peerConnection에 localStream을 연결
+**--- Enter Busy ---**
 
-**--- 통화 중 진입 ---**
+11. Add localVideoTrack to sv_face_chat_call_local -> From this point on, my image is displayed on the small surface view of the call screen.
 
-11. sv_face_chat_call_local에 localVideoTrack 추가  -> 이 때부터 통화화면 작은 서페이스뷰에 에 내 모습이 띄워짐.
+**--- onAddStream() method called: peer connection completed---**
 
-**--- onAddStream() 메소드 호출 : 피어 연결 완료---**
+12. Add remoteVideoTrack of the other party to sv_face_chat_call_remote -> From this point on, the other party's appearance is displayed.
 
-12. sv_face_chat_call_remote에 상대방의 remoteVideoTrack을 추가 -> 이 때부터 상대방 모습이 띄워짐.
+**--- End call ---**
 
-**--- 통화 종료 ---**
+13. Close peerConnection, null
+14. Depends on exit logic
+- When swiping: Proceed again from step 7
+- When the Cancel button is pressed and finished: Proceed again from step 6
 
-13. peerConnection 닫고, null로
-14. 종료 로직에 따라 다름
-	- 스와이핑 시 : 7번 순서부터 다시 진행
-	- 취소 버튼 누르고 종료 시 : 6번 순서부터 다시 진행
+**--- End of service ---**
 
-**--- 서비스 종료 ---**
-
-15. peerConnection이 살아있다면, 거기서 localStream 제거
-16. localStream에서 localVideoTrack 제거
-17. 로컬 카메라 촬영 종료
-18. localVideoSource 사용 종료
-19. videoCaptureManager null로
-
-# addStream 을 나중에
-# DataChannel 써서 테스트해보기
-# IceCandidates가 비동기적으로 생성된다.
-# 일찍부터 IceCandidate를 들어서 빠짐없이 듣는다.
-
-# A가 offer -> Setlocaldescription 잘 하는지
-# A가 IceCandidate를 일찍부터 잘 listen하는지
-# A에서 나온 offer / iceCandidate가 B에 잘 들어가는지
-# B한테 가서 일찍 들어온 IceCandidate가 전부 다 적용이 되는지
-# B의 Answer -> A로 잘 가는지
-# A가 그것을 잘 적용하는지
-
-# 아무래도 안 된다 -> 채널을 의심하여 DataChannel을 해본다.
-
-# TURN 서버 만들어야 함. : UDP 릴레이 서버 (10%정도 로드 생김)
-# STUN 서버의 역할 : NAT 를 통과하는 데 필요한 정보를 얻는다.
+15. If peerConnection is alive, remove localStream from it
+16. Remove localVideoTrack from localStream
+17. End of local camera shooting
+18. End of use of localVideoSource
+19. videoCaptureManager to null
